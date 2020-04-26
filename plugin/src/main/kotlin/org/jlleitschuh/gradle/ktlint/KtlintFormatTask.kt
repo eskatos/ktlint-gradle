@@ -3,15 +3,19 @@ package org.jlleitschuh.gradle.ktlint
 import java.io.PrintWriter
 import javax.inject.Inject
 import org.gradle.api.file.FileTree
+import org.gradle.api.file.ProjectLayout
 import org.gradle.api.model.ObjectFactory
+import org.gradle.api.provider.ProviderFactory
 import org.gradle.api.tasks.CacheableTask
 import org.gradle.api.tasks.OutputFiles
 import org.gradle.api.tasks.TaskAction
 
 @CacheableTask
 open class KtlintFormatTask @Inject constructor(
-    objectFactory: ObjectFactory
-) : BaseKtlintCheckTask(objectFactory) {
+    objectFactory: ObjectFactory,
+    layout: ProjectLayout,
+    providers: ProviderFactory
+) : BaseKtlintCheckTask(objectFactory, layout, providers) {
     override fun additionalConfig(): (PrintWriter) -> Unit = {
         it.println("-F")
     }

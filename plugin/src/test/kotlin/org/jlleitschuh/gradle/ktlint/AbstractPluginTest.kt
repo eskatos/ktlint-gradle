@@ -44,7 +44,11 @@ abstract class AbstractPluginTest {
         GradleRunner.create()
             .withProjectDir(projectRoot)
             .withPluginClasspath()
-            .withArguments(arguments.toList() + "--stacktrace")
+            .withArguments(arguments.toList() + listOf(
+                "--stacktrace",
+                "-Dorg.gradle.unsafe.instant-execution=true",
+                "-Dorg.gradle.unsafe.instant-execution.fail-on-problems=false"
+            ))
 
     protected
     fun File.withCleanSources() = createSourceFile(

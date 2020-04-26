@@ -7,6 +7,7 @@ import com.android.build.gradle.LibraryExtension
 import com.android.build.gradle.TestExtension
 import com.android.build.gradle.api.BaseVariant
 import java.nio.file.Path
+import javax.inject.Inject
 import net.swiftzer.semver.SemVer
 import org.gradle.api.DomainObjectSet
 import org.gradle.api.Project
@@ -20,6 +21,11 @@ import org.gradle.api.provider.Property
 import org.gradle.api.provider.SetProperty
 import org.gradle.api.tasks.TaskProvider
 import org.gradle.language.base.plugins.LifecycleBasePlugin
+import org.gradle.process.ExecOperations
+import org.gradle.process.ExecResult
+import org.gradle.process.ExecSpec
+import org.gradle.process.JavaExecSpec
+import org.gradle.util.GradleVersion
 
 internal fun resolveMainClassName(ktlintVersion: String) = when {
     SemVer.parse(ktlintVersion) < SemVer(0, 32, 0) -> "com.github.shyiko.ktlint.Main"
@@ -155,3 +161,41 @@ internal val BaseExtension.variants: DomainObjectSet<out BaseVariant>?
         is TestExtension -> applicationVariants
         else -> null // Instant app extension doesn't provide variants access
     }
+
+internal interface ExecUtil {
+    fun exec(action: (ExecSpec) -> Unit): ExecResult
+    fun javaexec(action: (JavaExecSpec) -> Unit): ExecResult
+}
+
+internal fun Project.newExecUtil(): ExecUtil =
+    when {
+        GradleVersion.current() >= GradleVersion.version("6.0") -> {
+            objects.newInstance(DefaultExecUtil::class.java)
+        }
+        else -> {
+            OldExecUtil(project)
+        }
+    }
+
+@Suppress("UnstableApiUsage")
+private open class DefaultExecUtil @Inject constructor(
+    private val execOperations: ExecOperations
+) : ExecUtil {
+
+    override fun exec(action: (ExecSpec) -> Unit): ExecResult =
+        execOperations.exec(action)
+
+    override fun javaexec(action: (JavaExecSpec) -> Unit): ExecResult =
+        execOperations.javaexec(action)
+}
+
+private class OldExecUtil(
+    private val project: Project
+) : ExecUtil {
+
+    override fun exec(action: (ExecSpec) -> Unit): ExecResult =
+        project.exec(action)
+
+    override fun javaexec(action: (JavaExecSpec) -> Unit): ExecResult =
+        project.javaexec(action)
+}
