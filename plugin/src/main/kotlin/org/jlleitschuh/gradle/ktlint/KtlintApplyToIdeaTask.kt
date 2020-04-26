@@ -27,9 +27,11 @@ open class KtlintApplyToIdeaTask @Inject constructor(
     @get:Input
     val ktlintVersion: Property<String> = objectFactory.property()
 
+    private val execUtil = project.newExecUtil()
+
     @TaskAction
     fun generate() {
-        project.javaexec {
+        execUtil.javaexec {
             it.classpath = classpath
             it.main = resolveMainClassName(ktlintVersion.get())
 
