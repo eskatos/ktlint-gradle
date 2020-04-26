@@ -126,9 +126,12 @@ open class KtlintInstallGitHookTask @Inject constructor(
     @get:Input
     internal val hookName: Property<String> = objectFactory.property(String::class.java)
 
+    private val projectDir = project.projectDir
+    private val rootDir = project.rootDir
+
     @TaskAction
     fun installHook() {
-        val repo = RepositoryBuilder().findGitDir(project.projectDir).setMustExist(false).build()
+        val repo = RepositoryBuilder().findGitDir(projectDir).setMustExist(false).build()
         if (!repo.objectDatabase.exists()) {
             logger.warn("No git folder was found!")
             return
@@ -141,7 +144,7 @@ open class KtlintInstallGitHookTask @Inject constructor(
             gitHookFile.createNewFile()
             gitHookFile.setExecutable(true)
         }
-        val gradleRootDirPrefix = project.rootDir.relativeTo(repo.workTree).path
+        val gradleRootDirPrefix = rootDir.relativeTo(repo.workTree).path
 
         if (gitHookFile.length() == 0L) {
             gitHookFile.writeText(
