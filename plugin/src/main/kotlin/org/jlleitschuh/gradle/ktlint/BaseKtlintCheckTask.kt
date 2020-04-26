@@ -8,10 +8,12 @@ import org.gradle.api.GradleException
 import org.gradle.api.file.ConfigurableFileCollection
 import org.gradle.api.file.FileCollection
 import org.gradle.api.file.FileTree
+import org.gradle.api.file.ProjectLayout
 import org.gradle.api.file.RegularFileProperty
 import org.gradle.api.model.ObjectFactory
 import org.gradle.api.model.ReplacedBy
 import org.gradle.api.provider.Property
+import org.gradle.api.provider.ProviderFactory
 import org.gradle.api.provider.SetProperty
 import org.gradle.api.tasks.Classpath
 import org.gradle.api.tasks.Console
@@ -30,7 +32,9 @@ import org.jlleitschuh.gradle.ktlint.reporter.ReporterType
 
 @Suppress("UnstableApiUsage")
 abstract class BaseKtlintCheckTask(
-    private val objectFactory: ObjectFactory
+    private val objectFactory: ObjectFactory,
+    private val layout: ProjectLayout,
+    private val providers: ProviderFactory
 ) : SourceTask() {
 
     @get:Classpath
@@ -75,6 +79,8 @@ abstract class BaseKtlintCheckTask(
     @get:Input
     internal val disabledRules: SetProperty<String> = objectFactory.setProperty()
 
+    private val projectDir = project.projectDir
+
     @get:Internal
     internal val enabledReports: List<KtlintReport.BuiltIn>
         get() = reporters.get()
@@ -118,6 +124,8 @@ abstract class BaseKtlintCheckTask(
     internal val allReports
         get() = enabledReports.plus(customReports)
 
+    private val execUtil = project.newExecUtil()
+
     init {
         if (project.hasProperty(FILTER_INCLUDE_PROPERTY_NAME)) {
             applyGitFilter()
@@ -146,14 +154,14 @@ abstract class BaseKtlintCheckTask(
         checkExperimentalRulesSupportedKtlintVersion()
         checkDisabledRulesSupportedKtlintVersion()
 
-        project.javaexec(generateJavaExecSpec(filesToCheck, additionalConfig()))
+        execUtil.javaexec(generateJavaExecSpec(filesToCheck, additionalConfig()))
     }
 
     @OutputFiles
     val ktlintArgsFile = objectFactory.fileProperty().apply {
         set(
-            project.layout.buildDirectory.file(
-                project.provider {
+            layout.buildDirectory.file(
+                providers.provider {
                     "ktlint/${this@BaseKtlintCheckTask.name}.args"
                 }
             )
@@ -247,16 +255,16 @@ abstract class BaseKtlintCheckTask(
         SemVer.parse(ktlintVersion.get()) >= availableSinceVersion
 
     private fun ReporterType.getOutputFile() =
-        project.layout.buildDirectory.file(project.provider {
+        layout.buildDirectory.file(providers.provider {
             "reports/ktlint/${this@BaseKtlintCheckTask.name}.$fileExtension"
         })
 
     private fun CustomReporter.getOutputFile() =
-        project.layout.buildDirectory.file(project.provider {
+        layout.buildDirectory.file(providers.provider {
             "reports/ktlint/${this@BaseKtlintCheckTask.name}.$fileExtension"
         })
 
-    private fun File.toRelativeFile(): File = relativeTo(project.projectDir)
+    private fun File.toRelativeFile(): File = relativeTo(projectDir)
 
     /**
      * Provides all reports outputs map: reporter id to reporter output file.
